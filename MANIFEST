@@ -1,0 +1,12 @@
+MANIFEST
+MANIFEST.SKIP
+Makefile.PL
+README
+lib/POE/Component/Server/SimpleContent.pm
+static/index.html
+static/test/test.txt
+t/01_use.t
+t/02_pod.t
+t/03_spawn.t
+t/04_content.t
+META.yml                                 Module meta-data (added by MakeMaker)

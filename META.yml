@@ -1,0 +1,18 @@
+# http://module-build.sourceforge.net/META-spec.html
+#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
+name:         POE-Component-Server-SimpleContent
+version:      0.01
+version_from: lib/POE/Component/Server/SimpleContent.pm
+installdirs:  site
+requires:
+    Carp:                          0
+    CGI:                           0
+    Filesys::Virtual::Plain:       0.07
+    HTTP::Request:                 0
+    HTTP::Response:                0
+    MIME::Types:                   1.15
+    POE:                           0.31
+    URI::Escape:                   3.28
+
+distribution_type: module
+generated_by: ExtUtils::MakeMaker version 6.17
