@@ -10,7 +10,7 @@ use Filesys::Virtual::Plain;
 use MIME::Types;
 use vars qw($VERSION);
 
-$VERSION = '0.01';
+$VERSION = '0.99';
 
 sub spawn {
   my ($package) = shift;
@@ -34,7 +34,7 @@ sub spawn {
 
   $self->{mt} = MIME::Types->new();
 
-  $self->{autoindex} = 1 unless ( defined ( $self->{autoindex} ) and $self->{autoindex} == 0 );
+  $self->{auto_index} = 1 unless ( defined ( $self->{auto_index} ) and $self->{auto_index} == 0 );
   $self->{index_file} = 'index.html' unless ( $self->{index_file} );
 
   my ($mm);
@@ -143,14 +143,20 @@ sub session_id {
   return $_[0]->{session_id};
 }
 
-sub autoindex {
+# Alias for deprecated function
+sub autoindex { 
+  warn "autoindex is deprecated: please use auto_index";
+  goto &auto_index;
+}
+
+sub auto_index {
   my ($self) = shift;
   my ($value) = shift;
 
   unless ( defined ( $value ) ) {
-	return $self->{autoindex};
+	return $self->{auto_index};
   }
-  $self->{autoindex} = $value;
+  $self->{auto_index} = $value;
 }
 
 sub index_file {
@@ -275,7 +281,7 @@ POE::Component::Server::SimpleContent is a companion L<POE> component to L<POE::
 
 As demonstrated in the SYNOPSIS, POE::Component::Server::SimpleContent integrates with L<POE::Component::Server::SimpleHTTP>. General usage involves setting up your own custom handlers *before* a catchall handler which will route HTTP requests to SimpleContent.
 
-The component generates a minimal 404 error page as a response if the requested URL doesn't not exist in the virtual filesystem. It will generate a minimal 403 forbidden page if 'autoindex' is set to 0 and a requested directory doesn't have an 'index_file' 
+The component generates a minimal 404 error page as a response if the requested URL doesn't not exist in the virtual filesystem. It will generate a minimal 403 forbidden page if 'auto_index' is set to 0 and a requested directory doesn't have an 'index_file' 
 
 Directory indexing is supported by default, though don't expect anything really fancy.
 
@@ -291,7 +297,7 @@ Requires one mandatory argument, 'root_dir': the file system path which will bec
  options    - a hashref of POE::Session options to pass to the component's session;
  index_file - the filename that will be used if someone specifies a directory path,
 	      default is 'index.html';
- autoindex  - whether directory indexing is performed, default is 1;
+ auto_index - whether directory indexing is performed, default is 1;
 
 Example:
 
@@ -299,7 +305,7 @@ Example:
 	root_dir   => '/blah/blah/path',
 	options    => { trace => 1 },
 	index_file => 'default.htm',
-	autoindex  => 0,
+	auto_index  => 0,
  );
 
 =back
@@ -327,9 +333,9 @@ for what is returned by this method.
 
   $content->request( $request_obj, $response_obj );
 
-=item autoindex
+=item auto_index
 
-No parameter specified returns whether 'autoindex' is enabled or not. If a true or false value is specified, enables or disables 'autoindex', respectively.
+No parameter specified returns whether 'auto_index' is enabled or not. If a true or false value is specified, enables or disables 'auto_index', respectively.
 
 =item index_file
 

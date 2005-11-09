@@ -1,0 +1,9 @@
+POE::Component::Server::SimpleContent
+=====================================
+
+	9th November 2005
+0.99	- Applied a patch from Scott McCoy for 'auto_index'.
+	- Updated tests.
+
+	11th August 2005
+0.01	- Initial release.

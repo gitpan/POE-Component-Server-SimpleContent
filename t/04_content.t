@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 6;
+use Test::More tests => 7;
 BEGIN { use_ok('POE::Component::Server::SimpleContent') };
 
 #########################
@@ -28,13 +28,14 @@ $poe_kernel->run();
 exit 0;
 
 sub _start {
-  $_[HEAP]->{content} = [ qw(200 404 301 403) ];
+  $_[HEAP]->{content} = [ qw(200 404 301 403 404) ];
 
-  $content->autoindex( 0 );
+  $content->auto_index( 0 );
   $content->request( HTTP::Request->new( GET => 'http://localhost/' ), HTTP::Response->new() );
   $content->request( HTTP::Request->new( GET => 'http://localhost/blah' ), HTTP::Response->new() );
   $content->request( HTTP::Request->new( GET => 'http://localhost/test' ), HTTP::Response->new() );
   $content->request( HTTP::Request->new( GET => 'http://localhost/test/' ), HTTP::Response->new() );
+  $content->request( HTTP::Request->new( GET => 'http://localhost/../t/' ), HTTP::Response->new() );
 
   $poe_kernel->delay( _timeout => 60 );
   undef;

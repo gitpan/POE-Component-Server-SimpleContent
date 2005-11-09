@@ -2,6 +2,7 @@ MANIFEST
 MANIFEST.SKIP
 Makefile.PL
 README
+ChangeLog
 lib/POE/Component/Server/SimpleContent.pm
 static/index.html
 static/test/test.txt
