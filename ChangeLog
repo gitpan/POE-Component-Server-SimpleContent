@@ -1,6 +1,12 @@
 POE::Component::Server::SimpleContent
 =====================================
 
+	19th November 2005
+1.01	- Applied two patches from Scott McCoy for non-blocking file
+	  retrieval. Nice :)
+	- Non-blocking was a problem on Win32 *sigh*. Fixed. Added 
+	  Blocking option to spawn. Updated API docs.
+
 	9th November 2005
 0.99	- Applied a patch from Scott McCoy for 'auto_index'.
 	- Updated tests.

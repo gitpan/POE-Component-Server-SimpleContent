@@ -3,14 +3,14 @@ package POE::Component::Server::SimpleContent;
 use Carp;
 use strict;
 use warnings;
-use POE;
+use POE qw( Wheel::ReadWrite Filter::Stream );
 use CGI qw(:standard);
 use URI::Escape;
 use Filesys::Virtual::Plain;
 use MIME::Types;
 use vars qw($VERSION);
 
-$VERSION = '0.99';
+$VERSION = '1.01';
 
 sub spawn {
   my ($package) = shift;
@@ -48,8 +48,11 @@ sub spawn {
 
   $self->{session_id} = POE::Session->create(
 	object_states => [
-		$self => { request  => '_request',
+		$self => { 
+               request  => '_request',
 			   shutdown => '_shutdown',
+              -input    => '_read_input',
+              -error    => '_read_error',
 		},
 		$self => [ qw(_start) ],
 	],
@@ -106,20 +109,20 @@ sub _request {
 	  last SWITCH;
 	}
 	if ( $self->{vdir}->test('e', $path . $self->{index_file} ) ) {
-	  $response = $self->_generate_content( $path . $self->{index_file}, $response );
+	  $response = $self->_generate_content( $sender, $path . $self->{index_file}, $response );
 	  last SWITCH;
 	}
 	$response = $self->_generate_403( $response );
 	last SWITCH;
     }
     if ( $self->{vdir}->test('e', $path) ) {
-	$response = $self->_generate_content( $path, $response );
+	$response = $self->_generate_content( $sender, $path, $response );
 	last SWITCH;
     }
     $response = $self->_generate_404( $response );
   }
 
-  $kernel->call( $sender => 'DONE' => $response );
+  $kernel->call( $sender => 'DONE' => $response ) if defined $response;
   undef;
 }
 
@@ -216,16 +219,53 @@ sub _generate_dir_listing {
   return $response;
 }
 
+sub _read_input {
+  ${ $_[OBJECT]{read}{$_[ARG1]}{content} } .= $_[ARG0];
+}
+
+# Read finished
+sub _read_error {
+  my ($self, $kernel, $error, $wheelid) = @_[ OBJECT, KERNEL, ARG1, ARG3 ];
+  my $read     = delete $self->{read}{$wheelid};
+  my $response = delete $read->{response};
+  my $content  = delete $read->{content};
+  my $mimetype = delete $read->{mimetype};
+  my $sender   = delete $read->{sender};
+
+  delete $read->{wheel};
+  
+  if ($error) {
+    $response->content("Internal Server Error");
+    $response->code(500);
+  }
+  else {
+	unless ( $mimetype ) {
+	  if ( $self->{mm} ) {
+		$mimetype = $self->{mm}->checktype_contents( $$content );
+	  } else {
+		$mimetype = 'application/octet-stream';
+	  }
+	}
+	$response->code( 200 );
+	$response->content_type( $mimetype );
+	$response->content_ref( $content );
+  }
+  
+  $kernel->call( $sender => 'DONE' => $response );
+}
+
 sub _generate_content {
   my ($self) = shift;
+  my ($sender) = shift || return undef;
   my ($path) = shift || return undef;
   my ($response) = shift || return undef;
 
   my ($mimetype) = $self->{mt}->mimeTypeOf( $path );
 
   if ( my $fh = $self->{vdir}->open_read( $path ) ) {
-	binmode($fh);
-	local $/ = undef;
+    binmode($fh);
+    if ( $^O eq 'MSWin32' or $self->{blocking} ) {
+      local $/ = undef;
 	my $content = <$fh>;
 	unless ( $mimetype ) {
 	  if ( $self->{mm} ) {
@@ -237,6 +277,29 @@ sub _generate_content {
 	$response->code( 200 );
 	$response->content_type( $mimetype );
 	$response->content_ref( \$content );
+    } else {
+      my $readwrite = POE::Wheel::ReadWrite->new(
+        Handle          => $fh,
+        Filter          => POE::Filter::Stream->new(),
+        InputEvent      => "-input",
+        ErrorEvent      => "-error",
+      );
+
+      my $content = "";
+
+      my $wheelid   = $readwrite->ID;
+      my $readheap  = {
+        wheel     => $readwrite,
+        response  => $response,
+        mimetype  => $mimetype,
+        sender    => $sender,
+        content   => \$content,
+      };
+
+      $self->{read}{$wheelid} = $readheap;
+
+      return undef;
+    }
   } else {
 	$response = $self->_generate_404( $response );
   }
@@ -298,6 +361,8 @@ Requires one mandatory argument, 'root_dir': the file system path which will bec
  index_file - the filename that will be used if someone specifies a directory path,
 	      default is 'index.html';
  auto_index - whether directory indexing is performed, default is 1;
+ blocking   - specify whether blocking file reads are to be used, default 0 non-blocking 
+	      ( this option is ignored on Win32, which does not support non-blocking ).
 
 Example:
 
@@ -394,6 +459,8 @@ More 'fancy' directory listing.
 Chris 'BinGOs' Williams
 
 =head1 KUDOS
+
+Scott McCoy for pestering me with patches, for non-blocking file reads. :)
 
 Apocal for writing POE::Component::Server::SimpleHTTP.
 

@@ -28,14 +28,20 @@ $poe_kernel->run();
 exit 0;
 
 sub _start {
-  $_[HEAP]->{content} = [ qw(200 404 301 403 404) ];
+  my @content = qw(200 404 301 403 404);
+  $_[HEAP]->{content} = {}; 
+  my @response;
+  for my $code (@content) {
+    push @response, HTTP::Response->new;
+    $_[HEAP]->{content}{$response[$#response]} = $code;
+  }
 
   $content->auto_index( 0 );
-  $content->request( HTTP::Request->new( GET => 'http://localhost/' ), HTTP::Response->new() );
-  $content->request( HTTP::Request->new( GET => 'http://localhost/blah' ), HTTP::Response->new() );
-  $content->request( HTTP::Request->new( GET => 'http://localhost/test' ), HTTP::Response->new() );
-  $content->request( HTTP::Request->new( GET => 'http://localhost/test/' ), HTTP::Response->new() );
-  $content->request( HTTP::Request->new( GET => 'http://localhost/../t/' ), HTTP::Response->new() );
+  $content->request( HTTP::Request->new( GET => 'http://localhost/' ), shift @response );
+  $content->request( HTTP::Request->new( GET => 'http://localhost/blah' ), shift @response );
+  $content->request( HTTP::Request->new( GET => 'http://localhost/test' ), shift @response );
+  $content->request( HTTP::Request->new( GET => 'http://localhost/test/' ), shift @response );
+  $content->request( HTTP::Request->new( GET => 'http://localhost/../t/' ), shift @response );
 
   $poe_kernel->delay( _timeout => 60 );
   undef;
@@ -48,12 +54,12 @@ sub _timeout {
 
 sub DONE {
   my ($heap) = $_[HEAP];
-  my ($code) = shift @{ $heap->{content} };
   my ($response) = $_[ARG0];
+  my $code = $response->code;
 
-  ok( $response->code eq $code, "Test for $code" );
+  ok( $code eq delete $heap->{content}{$response}, "Test for $code" );
 
-  if ( scalar @{ $heap->{content} } == 0 ) {
+  if ( scalar keys %{ $heap->{content} } == 0 ) {
 	$poe_kernel->delay( _timeout => undef );
 	$content->shutdown();
   }
