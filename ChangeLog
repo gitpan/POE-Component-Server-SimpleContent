@@ -1,6 +1,12 @@
 POE::Component::Server::SimpleContent
 =====================================
 
+1.02	17th September 2006
+	- Kwalitee amendments for CPANTS.
+	- Added examples/simple.pl
+	- Switched to Module::Install.
+	- Added t/02_pod_coverage.t
+
 	19th November 2005
 1.01	- Applied two patches from Scott McCoy for non-blocking file
 	  retrieval. Nice :)

@@ -1,18 +1,20 @@
-# http://module-build.sourceforge.net/META-spec.html
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         POE-Component-Server-SimpleContent
-version:      1.01
-version_from: lib/POE/Component/Server/SimpleContent.pm
-installdirs:  site
-requires:
-    Carp:                          0
-    CGI:                           0
-    Filesys::Virtual::Plain:       0.07
-    HTTP::Request:                 0
-    HTTP::Response:                0
-    MIME::Types:                   1.15
-    POE:                           0.31
-    URI::Escape:                   3.28
-
+author: 'Chris Williams <chris@bingosnet.co.uk>'
 distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.17
+generated_by: Module::Install version 0.64
+license: perl
+module_name: POE::Component::Server::SimpleContent
+name: POE-Component-Server-SimpleContent
+no_index:
+  directory:
+    - inc
+    - t
+requires:
+  CGI: 0
+  Carp: 0
+  Filesys::Virtual::Plain: 0.07
+  HTTP::Request: 0
+  HTTP::Response: 0
+  MIME::Types: 1.15
+  POE: 0.31
+  URI::Escape: 3.28
+version: 1.02

@@ -1,13 +1,20 @@
+ChangeLog
+examples/simple.pl
+inc/Module/Install.pm
+inc/Module/Install/Base.pm
+inc/Module/Install/Makefile.pm
+inc/Module/Install/MakeMaker.pm
+inc/Module/Install/Metadata.pm
+lib/POE/Component/Server/SimpleContent.pm
+Makefile.PL
 MANIFEST
 MANIFEST.SKIP
-Makefile.PL
+META.yml			Module meta-data (added by MakeMaker)
 README
-ChangeLog
-lib/POE/Component/Server/SimpleContent.pm
 static/index.html
 static/test/test.txt
 t/01_use.t
 t/02_pod.t
+t/02_pod_coverage.t
 t/03_spawn.t
 t/04_content.t
-META.yml                                 Module meta-data (added by MakeMaker)
