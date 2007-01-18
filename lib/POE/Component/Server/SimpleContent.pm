@@ -1,8 +1,8 @@
 package POE::Component::Server::SimpleContent;
 
-use Carp;
 use strict;
 use warnings;
+use Carp;
 use POE qw( Wheel::ReadWrite Filter::Stream );
 use CGI qw(:standard);
 use URI::Escape;
@@ -10,22 +10,19 @@ use Filesys::Virtual::Plain;
 use MIME::Types;
 use vars qw($VERSION);
 
-$VERSION = '1.02';
+$VERSION = '1.03';
 
 sub spawn {
-  my ($package) = shift;
+  my $package = shift;
   croak "$package needs an even number of parameters" if @_ & 1;
   my %params = @_;
 
-  foreach my $param ( keys %params ) {
-     $params{ lc $param } = delete ( $params{ $param } );
-  }
+  $params{lc $_} = delete $params{$_} for keys %params;
 
-  unless ( $params{root_dir} and -d $params{root_dir} ) {
-	die "$package requires a 'root_dir' argument\n";
-  }
+  die "$package requires a 'root_dir' argument\n"
+	unless $params{root_dir} and -d $params{root_dir};
 
-  my $options = delete ( $params{'options'} );
+  my $options = delete $params{'options'};
 
   my $self = bless \%params, $package;
 
@@ -34,10 +31,12 @@ sub spawn {
 
   $self->{mt} = MIME::Types->new();
 
-  $self->{auto_index} = 1 unless ( defined ( $self->{auto_index} ) and $self->{auto_index} == 0 );
-  $self->{index_file} = 'index.html' unless ( $self->{index_file} );
+  $self->{auto_index} = 1 unless defined ( $self->{auto_index} ) and $self->{auto_index} == 0;
+  $self->{index_file} = 'index.html' unless $self->{index_file};
 
-  my ($mm);
+  $self->{prefix_fix} = quotemeta( $self->{prefix_fix} ) if $self->{prefix_fix};
+
+  my $mm;
 
   eval {
 	require File::MMagic;
@@ -73,49 +72,52 @@ sub _start {
 	$kernel->refcount_increment( $self->{session_id} => __PACKAGE__ );
   }
 
-  undef;
+  return;
 }
 
 sub request {
-  my ($self) = shift;
+  my $self = shift;
   $poe_kernel->post( $self->session_id() => 'request' => @_ );
 }
 
 sub _request {
   my ($kernel,$self,$request,$response) = @_[KERNEL,OBJECT,ARG0 .. ARG1];
-  my ($sender) = $_[SENDER]->ID();
+  my $sender = $_[SENDER]->ID();
 
   # Sanity check the $request and $response objects *sigh*
-  unless ( $response and $response->isa("HTTP::Response") ) {
-	return;
-  }
+  return unless $response and $response->isa("HTTP::Response");
+
   unless ( $request and $request->isa("HTTP::Request") ) {
 	$kernel->call( $sender => 'DONE' => $response );
 	return;
   }
 
-  my ($path) = uri_unescape( $request->uri->path );
+  my $path = uri_unescape( $request->uri->path );
+  my $realpath = $path;
+
+  $realpath = $self->{prefix_path} . $path if $self->{prefix_path};
+  $realpath =~ s/^$self->{prefix_fix}// if $self->{prefix_fix};
 
   SWITCH: {
-    if ( $self->{vdir}->test('d', $path) ) {
+    if ( $self->{vdir}->test('d', $realpath) ) {
 	if ( $path !~ /\/$/ ) {
 	  $path .= '/';
 	  $response->header( 'Location' => $path );
 	  $response = $self->_generate_301( $path, $response );
 	  last SWITCH;
 	}
-	if ( $self->{auto_index} and not $self->{vdir}->test('e', $path . $self->{index_file} ) ) {
+	if ( $self->{auto_index} and !$self->{vdir}->test('e', $realpath . $self->{index_file} ) ) {
 	  $response = $self->_generate_dir_listing( $path, $response );
 	  last SWITCH;
 	}
-	if ( $self->{vdir}->test('e', $path . $self->{index_file} ) ) {
+	if ( $self->{vdir}->test('e', $realpath . $self->{index_file} ) ) {
 	  $response = $self->_generate_content( $sender, $path . $self->{index_file}, $response );
 	  last SWITCH;
 	}
 	$response = $self->_generate_403( $response );
 	last SWITCH;
     }
-    if ( $self->{vdir}->test('e', $path) ) {
+    if ( $self->{vdir}->test('e', $realpath) ) {
 	$response = $self->_generate_content( $sender, $path, $response );
 	last SWITCH;
     }
@@ -127,7 +129,7 @@ sub _request {
 }
 
 sub shutdown {
-  my ($self) = shift;
+  my $self = shift;
   $poe_kernel->post( $self->session_id() => 'shutdown' => @_ );
 }
 
@@ -153,49 +155,41 @@ sub autoindex {
 }
 
 sub auto_index {
-  my ($self) = shift;
-  my ($value) = shift;
-
-  unless ( defined ( $value ) ) {
-	return $self->{auto_index};
-  }
+  my $self = shift;
+  my $value = shift;
+  return $self->{auto_index} unless defined $value;
   $self->{auto_index} = $value;
 }
 
 sub index_file {
-  my ($self) = shift;
-  my ($value) = shift;
-
-  unless ( defined ( $value ) ) {
-	return $self->{index_file};
-  }
+  my $self = shift;
+  my $value = shift;
+  return $self->{index_file} unless defined $value;
   $self->{index_file} = $value;
 }
 
 sub _generate_404 {
-  my ($self) = shift;
-  my ($response) = shift || return undef;
+  my $self = shift;
+  my $response = shift || return;
 
   $response->code( 404 );
   $response->content( start_html('404') . h1('Not Found') . end_html );
-
   return $response;
 }
 
 sub _generate_403 {
-  my ($self) = shift;
-  my ($response) = shift || return undef;
+  my $self = shift;
+  my $response = shift || return;
 
   $response->code( 403 );
   $response->content( start_html('403') . h1('Forbidden') . end_html );
-
   return $response;
 }
 
 sub _generate_301 {
-  my ($self) = shift;
-  my ($path) = shift || return undef;
-  my ($response) = shift || return undef;
+  my $self = shift;
+  my $path = shift || return;
+  my $response = shift || return;
 
   $response->code( 301 );
   $response->content( start_html('301') . h1('Moved Permanently') . '<p>The document has moved <a href="' . $path . '">here</a>.</p>' . end_html );
@@ -203,12 +197,16 @@ sub _generate_301 {
 }
 
 sub _generate_dir_listing {
-  my ($self) = shift;
-  my ($path) = shift || return undef;
-  my ($response) = shift || return undef;
-  my ($content) = start_html('Index of ' . $path) . h1('Index of ' . $path) . qq{<HR>\n<UL>\n};
+  my $self = shift;
+  my $path = shift || return;
+  my $response = shift || return undef;
+  my $content = start_html('Index of ' . $path) . h1('Index of ' . $path) . qq{<HR>\n<UL>\n};
 
-  foreach my $item ( $self->{vdir}->list( $path ) ) {
+  my $realpath = $path;
+  $realpath = $self->{prefix_path} . $path if $self->{prefix_path};
+  $realpath =~ s/^$self->{prefix_fix}// if $self->{prefix_fix};
+  
+  foreach my $item ( $self->{vdir}->list( $realpath ) ) {
 	next if $item =~ /^\./;
 	$content .= qq{<LI><A HREF="$path$item">$item</A></LI>\n};
   }
@@ -255,14 +253,17 @@ sub _read_error {
 }
 
 sub _generate_content {
-  my ($self) = shift;
-  my ($sender) = shift || return undef;
-  my ($path) = shift || return undef;
-  my ($response) = shift || return undef;
+  my $self = shift;
+  my $sender = shift || return;
+  my $path = shift || return;
+  my $response = shift || return;
+  my $realpath = $path;
+  $realpath = $self->{prefix_path} . $path if $self->{prefix_path};
+  $realpath =~ s/^$self->{prefix_fix}// if $self->{prefix_fix};
 
-  my ($mimetype) = $self->{mt}->mimeTypeOf( $path );
+  my $mimetype = $self->{mt}->mimeTypeOf( $path );
 
-  if ( my $fh = $self->{vdir}->open_read( $path ) ) {
+  if ( my $fh = $self->{vdir}->open_read( $realpath ) ) {
     binmode($fh);
     if ( $^O eq 'MSWin32' or $self->{blocking} ) {
       local $/ = undef;
@@ -298,7 +299,7 @@ sub _generate_content {
 
       $self->{read}{$wheelid} = $readheap;
 
-      return undef;
+      return;
     }
   } else {
 	$response = $self->_generate_404( $response );
@@ -354,8 +355,16 @@ Directory indexing is supported by default, though don't expect anything really 
 
 =item spawn
 
-Requires one mandatory argument, 'root_dir': the file system path which will become the root of the virtual filesystem. Returns an object on success. Optional arguments are:
+Requires one mandatory argument, 
 
+ 'root_dir', the file system path which will become the root of the virtual filesystem. 
+
+Optional arguments are:
+
+ prefix_path  specify a path within the virtual filesystem that will be prefixed to
+	      the url path to find the real path for content;
+ prefix_fix - specify a path that will be removed from the front of url path to find 
+	      the real path for content within the virtual filesystem;
  alias      - the POE::Kernel alias to set for the component's session;
  options    - a hashref of POE::Session options to pass to the component's session;
  index_file - the filename that will be used if someone specifies a directory path,
@@ -364,9 +373,11 @@ Requires one mandatory argument, 'root_dir': the file system path which will bec
  blocking   - specify whether blocking file reads are to be used, default 0 non-blocking 
 	      ( this option is ignored on Win32, which does not support non-blocking ).
 
+Returns an object on success.
+
 Example:
 
- my ($content) = POE::Component::Server::SimpleContent->spawn(
+ my $content = POE::Component::Server::SimpleContent->spawn(
 	root_dir   => '/blah/blah/path',
 	options    => { trace => 1 },
 	index_file => 'default.htm',

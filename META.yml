@@ -1,20 +1,19 @@
-author: 'Chris Williams <chris@bingosnet.co.uk>'
+author: Chris Williams <chris@bingosnet.co.uk>
 distribution_type: module
 generated_by: Module::Install version 0.64
 license: perl
-module_name: POE::Component::Server::SimpleContent
 name: POE-Component-Server-SimpleContent
-no_index:
-  directory:
+no_index: 
+  directory: 
     - inc
     - t
-requires:
+requires: 
   CGI: 0
   Carp: 0
   Filesys::Virtual::Plain: 0.07
   HTTP::Request: 0
   HTTP::Response: 0
   MIME::Types: 1.15
-  POE: 0.31
+  POE: 0.38
   URI::Escape: 3.28
-version: 1.02
+version: 1.03
