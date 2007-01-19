@@ -16,4 +16,4 @@ requires:
   MIME::Types: 1.15
   POE: 0.38
   URI::Escape: 3.28
-version: 1.03
+version: 1.04

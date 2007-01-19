@@ -5,7 +5,7 @@ use POE;
 use HTTP::Request;
 use HTTP::Response;
 
-my $content = POE::Component::Server::SimpleContent->spawn( root_dir => 'static/', prefix_fix => '/CPAN' );
+my $content = POE::Component::Server::SimpleContent->spawn( root_dir => 'static/', alias_path => '/CPAN' );
 
 isa_ok( $content, 'POE::Component::Server::SimpleContent' );
 

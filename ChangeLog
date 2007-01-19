@@ -1,6 +1,9 @@
 POE::Component::Server::SimpleContent
 =====================================
 
+1.04	19th January 2007
+	- 'prefix_fix' is now 'alias_path' which makes more sense.
+
 1.03	18th January 2007
 	- Makefile.PL converted totally to Module::Install.
 	- Added 'prefix_path' and 'prefix_fix' options added.

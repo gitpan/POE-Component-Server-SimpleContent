@@ -10,7 +10,7 @@ use Filesys::Virtual::Plain;
 use MIME::Types;
 use vars qw($VERSION);
 
-$VERSION = '1.03';
+$VERSION = '1.04';
 
 sub spawn {
   my $package = shift;
@@ -33,6 +33,8 @@ sub spawn {
 
   $self->{auto_index} = 1 unless defined ( $self->{auto_index} ) and $self->{auto_index} == 0;
   $self->{index_file} = 'index.html' unless $self->{index_file};
+
+  $self->{prefix_fix} = delete $self->{alias_path} if $self->{alias_path};
 
   $self->{prefix_fix} = quotemeta( $self->{prefix_fix} ) if $self->{prefix_fix};
 
@@ -363,7 +365,7 @@ Optional arguments are:
 
  prefix_path  specify a path within the virtual filesystem that will be prefixed to
 	      the url path to find the real path for content;
- prefix_fix - specify a path that will be removed from the front of url path to find 
+ alias_path - specify a path that will be removed from the front of url path to find 
 	      the real path for content within the virtual filesystem;
  alias      - the POE::Kernel alias to set for the component's session;
  options    - a hashref of POE::Session options to pass to the component's session;
