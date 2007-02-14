@@ -1,7 +1,12 @@
 package POE::Component::Server::SimpleContent;
 
 use strict;
-use warnings;
+
+# We export some stuff
+require Exporter;
+our @ISA = qw( Exporter );
+our @EXPORT = qw(generate_301 generate_404 generate_403);
+
 use Carp;
 use POE qw( Wheel::ReadWrite Filter::Stream );
 use CGI qw(:standard);
@@ -10,7 +15,7 @@ use Filesys::Virtual::Plain;
 use MIME::Types;
 use vars qw($VERSION);
 
-$VERSION = '1.04';
+$VERSION = '1.05';
 
 sub spawn {
   my $package = shift;
@@ -173,7 +178,12 @@ sub index_file {
 sub _generate_404 {
   my $self = shift;
   my $response = shift || return;
+  return generate_404( $response );
+}
 
+sub generate_404 {
+  my $response = shift || return;
+  return unless $response->isa('HTTP::Response');
   $response->code( 404 );
   $response->content( start_html('404') . h1('Not Found') . end_html );
   return $response;
@@ -182,7 +192,12 @@ sub _generate_404 {
 sub _generate_403 {
   my $self = shift;
   my $response = shift || return;
+  return generate_403( $response );
+}
 
+sub generate_403 {
+  my $response = shift || return;
+  return unless $response->isa('HTTP::Response');
   $response->code( 403 );
   $response->content( start_html('403') . h1('Forbidden') . end_html );
   return $response;
@@ -192,7 +207,13 @@ sub _generate_301 {
   my $self = shift;
   my $path = shift || return;
   my $response = shift || return;
+  return generate_301( $path, $response );
+}
 
+sub generate_301 {
+  my $path = shift || return;
+  my $response = shift || return;
+  return unless $response->isa('HTTP::Response');
   $response->code( 301 );
   $response->content( start_html('301') . h1('Moved Permanently') . '<p>The document has moved <a href="' . $path . '">here</a>.</p>' . end_html );
   return $response;
@@ -452,6 +473,32 @@ object API or the session API. The event is 'DONE' to maintain compatibility wit
 =item DONE
 
 ARG0 will be a L<HTTP::Response> object. 
+
+=back
+
+=head1 EXPORTED FUNCTIONS
+
+The following functions are exported:
+
+=over
+
+=item generate_301
+
+Takes two mandatory arguments, a path and a L<HTTP::Response> object. 
+
+Returns the L<HTTP::Response> object with the content applicable for a 301 HTTP response.
+
+=item generate_403
+
+Takes one mandatory argument, a L<HTTP::Response> object. 
+
+Returns the L<HTTP::Response> object with the content applicable for a 403 HTTP response.
+
+=item generate_404
+
+Takes one mandatory argument, a L<HTTP::Response> object. 
+
+Returns the L<HTTP::Response> object with the content applicable for a 404 HTTP response.
 
 =back
 

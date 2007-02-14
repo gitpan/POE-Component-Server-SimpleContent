@@ -1,6 +1,10 @@
 POE::Component::Server::SimpleContent
 =====================================
 
+1.05	14th February 2007
+	- Added kwalitee test.
+	- New exported functions for 301, 403, 404.
+
 1.04	19th January 2007
 	- 'prefix_fix' is now 'alias_path' which makes more sense.
 
@@ -15,15 +19,15 @@ POE::Component::Server::SimpleContent
 	- Switched to Module::Install.
 	- Added t/02_pod_coverage.t
 
-	19th November 2005
-1.01	- Applied two patches from Scott McCoy for non-blocking file
+1.01	19th November 2005
+	- Applied two patches from Scott McCoy for non-blocking file
 	  retrieval. Nice :)
 	- Non-blocking was a problem on Win32 *sigh*. Fixed. Added 
 	  Blocking option to spawn. Updated API docs.
 
-	9th November 2005
-0.99	- Applied a patch from Scott McCoy for 'auto_index'.
+0.99	9th November 2005
+	- Applied a patch from Scott McCoy for 'auto_index'.
 	- Updated tests.
 
-	11th August 2005
-0.01	- Initial release.
+0.01	11th August 2005
+	- Initial release.

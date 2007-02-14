@@ -21,6 +21,7 @@ static/test/test.txt
 t/01_use.t
 t/02_pod.t
 t/02_pod_coverage.t
+t/02_test_kwalitee.t
 t/03_spawn.t
 t/04_content.t
 t/05_prefix_path.t
