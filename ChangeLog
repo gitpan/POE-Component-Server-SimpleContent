@@ -1,6 +1,9 @@
 POE::Component::Server::SimpleContent
 =====================================
 
+1.06	16th March 2007
+	- Updated inc::Module::Install
+
 1.05	14th February 2007
 	- Added kwalitee test.
 	- New exported functions for 301, 403, 404.
