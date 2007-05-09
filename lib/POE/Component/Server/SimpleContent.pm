@@ -13,9 +13,10 @@ use CGI qw(:standard);
 use URI::Escape;
 use Filesys::Virtual::Plain;
 use MIME::Types;
+use Storable;
 use vars qw($VERSION);
 
-$VERSION = '1.06';
+$VERSION = '1.07';
 
 sub spawn {
   my $package = shift;
@@ -26,6 +27,9 @@ sub spawn {
 
   die "$package requires a 'root_dir' argument\n"
 	unless $params{root_dir} and -d $params{root_dir};
+
+  _massage_handlers( $params{handlers} ) if $params{handlers};
+  $params{handlers} = [ ] unless $params{handlers};
 
   my $options = delete $params{'options'};
 
@@ -46,9 +50,15 @@ sub spawn {
   my $mm;
 
   eval {
+	require File::MMagic::XS;
+	import File::MMagic::XS qw(:compat);
+	$mm = File::MMagic::XS->new();
+  };
+
+  eval {
 	require File::MMagic;
 	$mm = File::MMagic->new();
-  };
+  } unless $mm;
  
   $self->{mm} = $mm;
 
@@ -118,6 +128,7 @@ sub _request {
 	  last SWITCH;
 	}
 	if ( $self->{vdir}->test('e', $realpath . $self->{index_file} ) ) {
+	  # Check handlers
 	  $response = $self->_generate_content( $sender, $path . $self->{index_file}, $response );
 	  last SWITCH;
 	}
@@ -125,6 +136,7 @@ sub _request {
 	last SWITCH;
     }
     if ( $self->{vdir}->test('e', $realpath) ) {
+	# Check handlers
 	$response = $self->_generate_content( $sender, $path, $response );
 	last SWITCH;
     }
@@ -263,7 +275,8 @@ sub _read_error {
 	unless ( $mimetype ) {
 	  if ( $self->{mm} ) {
 		$mimetype = $self->{mm}->checktype_contents( $$content );
-	  } else {
+	  } 
+	  else {
 		$mimetype = 'application/octet-stream';
 	  }
 	}
@@ -294,7 +307,8 @@ sub _generate_content {
 	unless ( $mimetype ) {
 	  if ( $self->{mm} ) {
 		$mimetype = $self->{mm}->checktype_contents( $content );
-	  } else {
+	  } 
+	  else {
 		$mimetype = 'application/octet-stream';
 	  }
 	}
@@ -329,6 +343,44 @@ sub _generate_content {
   }
 
   return $response;
+}
+
+sub _massage_handlers {
+  my $handler = shift || return;
+  croak( "HANDLERS is not a ref to an array!" ) 
+	unless ref $handler and ref $handler eq 'ARRAY';
+  my $count = 0;
+  while ( $count < scalar( @$handler ) ) {
+     if ( ref $handler->[ $count ] and ref( $handler->[ $count ] ) eq 'HASH' ) {
+	$handler->[ $count ]->{ uc $_ } = delete $handler->[ $count ]->{ $_ } 
+	    for keys %{ $handler->[ $count ] };
+	croak( "HANDLER number $count does not have a SESSION argument!" )
+		unless $handler->[ $count ]->{'SESSION'};
+	croak( "HANDLER number $count does not have an EXT argument!" )
+		unless $handler->[ $count ]->{'EXT'};
+	$handler->[ $count ]->{'SESSION'} = $handler->[ $count ]->{'SESSION'}->ID()
+		if UNIVERSAL::isa( $handler->[ $count ]->{'SESSION'}, 'POE::Session' );
+     }
+     else {
+	croak( "HANDLER number $count is not a reference to a HASH!" );
+     }
+     $count++;
+  }
+  return 1;
+}
+
+sub get_handlers {
+  my $self = shift;
+  my $handlers = Storable::dclone( $self->{handlers} );
+  return $handlers;
+}
+
+sub set_handlers {
+  my $self = shift;
+  my $handlers = shift || return;
+  _massage_handlers( $handlers );
+  $self->{handlers} = $handlers;
+  return 1;
 }
 
 1;
@@ -439,6 +491,14 @@ No parameter specified returns whether 'auto_index' is enabled or not. If a true
 =item index_file
 
 No parameter specified, returns the current setting of 'index_file'. If a parameter is specified, sets 'index_file' to that given value.
+
+=item get_handlers
+
+Returns an arrayref of the current handlers.
+
+=item set_handlers
+
+Accepts an arrayref of handler hashrefs ( see spawn() for details ).
 
 =back
 

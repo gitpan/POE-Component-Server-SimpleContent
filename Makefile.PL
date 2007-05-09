@@ -11,4 +11,12 @@ requires 'URI::Escape' => 3.28;
 requires 'Filesys::Virtual::Plain' => 0.07;
 requires 'HTTP::Request' => 0;
 requires 'HTTP::Response' => 0;
+my $value = prompt( 'Do you want to install optional module File::MMagic::XS [y/N]?', 'N' );
+if ( $value =~ /^Y$/i ) {
+   requires 'File::MMagic::XS' => 0.09;
+}
+$value = prompt( 'Do you want to install optional module File::MMagic [y/N]?', 'N' );
+if ( $value =~ /^Y$/i ) {
+   requires 'File::MMagic' => 1.27;
+}
 WriteAll();
