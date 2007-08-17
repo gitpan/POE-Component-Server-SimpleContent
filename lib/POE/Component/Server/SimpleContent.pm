@@ -14,9 +14,10 @@ use URI::Escape;
 use Filesys::Virtual::Plain;
 use MIME::Types;
 use Storable;
+use File::Basename;
 use vars qw($VERSION);
 
-$VERSION = '1.07';
+$VERSION = '1.08';
 
 sub spawn {
   my $package = shift;
@@ -29,7 +30,7 @@ sub spawn {
 	unless $params{root_dir} and -d $params{root_dir};
 
   _massage_handlers( $params{handlers} ) if $params{handlers};
-  $params{handlers} = [ ] unless $params{handlers};
+  $params{handlers} = { } unless $params{handlers};
 
   my $options = delete $params{'options'};
 
@@ -105,7 +106,7 @@ sub _request {
   return unless $response and $response->isa("HTTP::Response");
 
   unless ( $request and $request->isa("HTTP::Request") ) {
-	$kernel->call( $sender => 'DONE' => $response );
+	$kernel->post( $sender => 'DONE' => $response );
 	return;
   }
 
@@ -128,7 +129,21 @@ sub _request {
 	  last SWITCH;
 	}
 	if ( $self->{vdir}->test('e', $realpath . $self->{index_file} ) ) {
-	  # Check handlers
+	  my ($filename, $directory, $suffix) = fileparse($self->{index_file}, keys %{ $self->{handlers} } );
+	  if ( $suffix ) {
+	     $kernel->post( 
+		$self->{handlers}->{ $suffix }->{SESSION},
+		$self->{handlers}->{ $suffix }->{EVENT},
+		{
+			request         => $request,
+			response        => $response,
+			session         => $sender,
+			script_name     => $path . $self->{index_file},
+			script_filename => $self->{vdir}->root_path() . $realpath . $self->{index_file},
+		},
+	     );
+	     return;
+	  }
 	  $response = $self->_generate_content( $sender, $path . $self->{index_file}, $response );
 	  last SWITCH;
 	}
@@ -136,14 +151,28 @@ sub _request {
 	last SWITCH;
     }
     if ( $self->{vdir}->test('e', $realpath) ) {
-	# Check handlers
+	my ($filename, $directory, $suffix) = fileparse($realpath, keys %{ $self->{handlers} } );
+	if ( $suffix ) {
+	   $kernel->post( 
+		$self->{handlers}->{ $suffix }->{SESSION},
+		$self->{handlers}->{ $suffix }->{EVENT},
+		{
+			request         => $request,
+			response        => $response,
+			session         => $sender,
+			script_name     => $path,
+			script_filename => $self->{vdir}->root_path() . $realpath,
+		},
+	   );
+	   return;
+	}
 	$response = $self->_generate_content( $sender, $path, $response );
 	last SWITCH;
     }
     $response = $self->_generate_404( $response );
   }
 
-  $kernel->call( $sender => 'DONE' => $response ) if defined $response;
+  $kernel->post( $sender => 'DONE' => $response ) if defined $response;
   undef;
 }
 
@@ -285,7 +314,7 @@ sub _read_error {
 	$response->content_ref( $content );
   }
   
-  $kernel->call( $sender => 'DONE' => $response );
+  $kernel->post( $sender => 'DONE' => $response );
 }
 
 sub _generate_content {
@@ -347,24 +376,16 @@ sub _generate_content {
 
 sub _massage_handlers {
   my $handler = shift || return;
-  croak( "HANDLERS is not a ref to an array!" ) 
-	unless ref $handler and ref $handler eq 'ARRAY';
-  my $count = 0;
-  while ( $count < scalar( @$handler ) ) {
-     if ( ref $handler->[ $count ] and ref( $handler->[ $count ] ) eq 'HASH' ) {
-	$handler->[ $count ]->{ uc $_ } = delete $handler->[ $count ]->{ $_ } 
-	    for keys %{ $handler->[ $count ] };
-	croak( "HANDLER number $count does not have a SESSION argument!" )
-		unless $handler->[ $count ]->{'SESSION'};
-	croak( "HANDLER number $count does not have an EXT argument!" )
-		unless $handler->[ $count ]->{'EXT'};
-	$handler->[ $count ]->{'SESSION'} = $handler->[ $count ]->{'SESSION'}->ID()
-		if UNIVERSAL::isa( $handler->[ $count ]->{'SESSION'}, 'POE::Session' );
-     }
-     else {
-	croak( "HANDLER number $count is not a reference to a HASH!" );
-     }
-     $count++;
+  croak( "HANDLERS is not a ref to an hash!" ) 
+	unless ref $handler and ref $handler eq 'HASH';
+  foreach my $ext ( keys %{ $handler } ) {
+    delete $handler->{ $ext } unless ref $handler->{ $ext } eq 'HASH';
+    croak( "HANDLER for '$ext' does not have a SESSION argument!" )
+	unless $handler->{ $ext }->{'SESSION'};
+    croak( "HANDLER for '$ext' does not have an EVENT argument!" )
+	unless $handler->{ $ext }->{'EVENT'};
+    $handler->{ $ext }->{'SESSION'} = $handler->{ $ext }->{'SESSION'}->ID()
+	if UNIVERSAL::isa( $handler->{ $ext }->{'SESSION'}, 'POE::Session' );
   }
   return 1;
 }
@@ -389,14 +410,14 @@ __END__
 
 =head1 NAME
 
-POE::Component::Server::SimpleContent - The easy way to serve web content with L<POE::Component::Server::SimpleHTTP>.
+POE::Component::Server::SimpleContent - The easy way to serve web content with POE::Component::Server::SimpleHTTP.
 
 =head1 SYNOPSIS
 
   # A simple web server 
   use POE qw(Component::Server::SimpleHTTP Component::Server::SimpleContent);
 
-  my ($content) = POE::Component::Server::SimpleContent->spawn( root_dir => '/blah/blah/path' );
+  my $content = POE::Component::Server::SimpleContent->spawn( root_dir => '/blah/blah/path' );
 
   POE::Component::Server::SimpleHTTP->new(
 	ALIAS => 'httpd',
@@ -424,6 +445,8 @@ The component generates a minimal 404 error page as a response if the requested 
 
 Directory indexing is supported by default, though don't expect anything really fancy.
 
+One may also specify handlers for particular extension types.
+
 =head1 CONSTRUCTOR
 
 =over
@@ -447,6 +470,18 @@ Optional arguments are:
  auto_index - whether directory indexing is performed, default is 1;
  blocking   - specify whether blocking file reads are to be used, default 0 non-blocking 
 	      ( this option is ignored on Win32, which does not support non-blocking ).
+ handlers   - a hashref of file extension handlers.
+
+File extension handlers are a hashref keyed on file extension ( without the preceeding dot '.' ), of
+further hashrefs, with the keys 'SESSION' for the POE::Session to that will be handling this file 
+extension and 'EVENT' for the event to trigger in that session.
+
+  handlers => { 
+		pl  => { SESSION => 'foobar', EVENT => 'foo' },
+		cgi => { SESSION => 3, EVENT => 'cgi_handler' },
+  },
+
+See OUTPUT EVENTS below for what gets sent to your event handlers.
 
 Returns an object on success.
 
@@ -536,6 +571,19 @@ ARG0 will be a L<HTTP::Response> object.
 
 =back
 
+File extension handler events will have a hashref as ARG0 with the following keys:
+
+  'request', the HTTP::Request object;
+  'response', the HTTP::Response object;
+  'session', the POE::Session that sent the request to us;
+  'script_name', the virtual path to the file that was requested;
+  'script_filename', the full system path to the file that was requested;
+
+After the target session has processed the request in whatever shape or form it must post the 'response'
+object back to the original session as given in 'session', using the 'DONE' event.
+
+  $kernel->post( $session, 'DONE', $response );
+
 =head1 EXPORTED FUNCTIONS
 
 The following functions are exported:
@@ -564,7 +612,7 @@ Returns the L<HTTP::Response> object with the content applicable for a 404 HTTP 
 
 =head1 CAVEATS
 
-This module is designed for serving small content, ie. HTML files and jpegs/png/gifs. There is a good chance that the component might block when atttempting to serve larger content, such as MP3s, etc.
+This module is designed for serving small content, ie. HTML files and jpegs/png/gifs. There is a good chance that the component might block when attempting to serve larger content, such as MP3s, etc.
 
 =head1 TODO
 
