@@ -17,7 +17,7 @@ use Storable;
 use File::Basename;
 use vars qw($VERSION);
 
-$VERSION = '1.08';
+$VERSION = '1.09';
 
 sub spawn {
   my $package = shift;
@@ -120,7 +120,6 @@ sub _request {
     if ( $self->{vdir}->test('d', $realpath) ) {
 	if ( $path !~ /\/$/ ) {
 	  $path .= '/';
-	  $response->header( 'Location' => $path );
 	  $response = $self->_generate_301( $path, $response );
 	  last SWITCH;
 	}
@@ -256,6 +255,7 @@ sub generate_301 {
   my $response = shift || return;
   return unless $response->isa('HTTP::Response');
   $response->code( 301 );
+  $response->header( 'Location' => $path );
   $response->content( start_html('301') . h1('Moved Permanently') . '<p>The document has moved <a href="' . $path . '">here</a>.</p>' . end_html );
   return $response;
 }
