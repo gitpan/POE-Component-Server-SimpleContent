@@ -1,12 +1,11 @@
 package POE::Component::Server::SimpleContent;
 
-use strict;
-
 # We export some stuff
 require Exporter;
-our @ISA = qw( Exporter );
-our @EXPORT = qw(generate_301 generate_404 generate_403);
+@ISA = qw( Exporter );
+@EXPORT = qw(generate_301 generate_404 generate_403);
 
+use strict;
 use Carp;
 use POE qw( Wheel::ReadWrite Filter::Stream );
 use CGI qw(:standard);
@@ -17,7 +16,7 @@ use Storable;
 use File::Basename;
 use vars qw($VERSION);
 
-$VERSION = '1.09';
+$VERSION = '1.10';
 
 sub spawn {
   my $package = shift;
