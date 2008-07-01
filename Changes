@@ -1,6 +1,9 @@
 POE::Component::Server::SimpleContent
 =====================================
 
+1.12	Tue Jul  1 10:15:34 BST 2008
+	- Added LICENSE information
+
 1.10	Thu Nov  1 14:34:10 GMT 2007
 	- Updated Module::Install to 0.68
 
