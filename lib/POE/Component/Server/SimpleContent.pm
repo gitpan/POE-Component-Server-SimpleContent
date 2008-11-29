@@ -6,6 +6,7 @@ require Exporter;
 @EXPORT = qw(generate_301 generate_404 generate_403);
 
 use strict;
+use warnings;
 use Carp;
 use POE qw( Wheel::ReadWrite Filter::Stream );
 use CGI qw(:standard);
@@ -16,7 +17,7 @@ use Storable;
 use File::Basename;
 use vars qw($VERSION);
 
-$VERSION = '1.12';
+$VERSION = '1.14';
 
 sub spawn {
   my $package = shift;
@@ -224,6 +225,7 @@ sub generate_404 {
   my $response = shift || return;
   return unless $response->isa('HTTP::Response');
   $response->code( 404 );
+  $response->header( 'Content-Type', 'text/html' );
   $response->content( start_html('404') . h1('Not Found') . end_html );
   return $response;
 }
@@ -238,6 +240,7 @@ sub generate_403 {
   my $response = shift || return;
   return unless $response->isa('HTTP::Response');
   $response->code( 403 );
+  $response->header( 'Content-Type', 'text/html' );
   $response->content( start_html('403') . h1('Forbidden') . end_html );
   return $response;
 }
@@ -255,6 +258,7 @@ sub generate_301 {
   return unless $response->isa('HTTP::Response');
   $response->code( 301 );
   $response->header( 'Location' => $path );
+  $response->header( 'Content-Type', 'text/html' );
   $response->content( start_html('301') . h1('Moved Permanently') . '<p>The document has moved <a href="' . $path . '">here</a>.</p>' . end_html );
   return $response;
 }
@@ -276,6 +280,7 @@ sub _generate_dir_listing {
   
   $content .= qq{</UL>\n} . end_html;
   $response->code( 200 );
+  $response->header( 'Content-Type', 'text/html' );
   $response->content( $content );
   return $response;
 }

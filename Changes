@@ -1,6 +1,12 @@
 POE::Component::Server::SimpleContent
 =====================================
 
+1.14	Sat Nov 29 22:51:30 GMT 2008
+	- use warnings
+	- Minimum perl version 5.006
+	- Added content-type header setting
+	  where applicable to text/html
+
 1.12	Tue Jul  1 10:15:34 BST 2008
 	- Added LICENSE information
 

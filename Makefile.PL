@@ -3,7 +3,7 @@ use inc::Module::Install;
 name 'POE-Component-Server-SimpleContent';
 author 'Chris Williams <chris@bingosnet.co.uk>';
 license 'perl';
-perl_version '5.0';
+perl_version '5.006';
 version_from 'lib/POE/Component/Server/SimpleContent.pm';
 abstract_from 'lib/POE/Component/Server/SimpleContent.pm';
 build_requires 'Test::More' => 0.47;
